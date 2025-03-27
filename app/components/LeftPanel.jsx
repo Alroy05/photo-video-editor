@@ -111,37 +111,33 @@ export default function LeftPanel({
         <Divider />
 
         {selectedMedia && (
-          <Stack gap="md">
-            <NumberInput
-              label="Start Time"
-              value={selectedMedia.startTime}
-              onChange={(value) => handleUpdateMedia(selectedMediaId, { 
-                startTime: Math.max(0, Math.min(value, selectedMedia.endTime - 0.1))
-              })}
-              min={0}
-              max={selectedMedia.endTime - 0.1}
-              step={0.1}
-              decimalScale={1}
-            />
-            <NumberInput
-              label="End Time"
-              value={selectedMedia.endTime}
-              onChange={(value) => handleUpdateMedia(selectedMediaId, { 
-                endTime: Math.min(selectedMedia.duration, Math.max(value, selectedMedia.startTime + 0.1))
-              })}
-              min={selectedMedia.startTime + 0.1}
-              max={selectedMedia.duration}
-              step={0.1}
-              decimalScale={1}
-            />
-            <Text size="sm">Current: {currentTime.toFixed(1)} / {selectedMedia.duration.toFixed(1)}</Text>
-            {isPlaying ? (
-              <Button onClick={handleStop}>Stop</Button>
-            ) : (
-              <Button onClick={handlePlay}>Play</Button>
-            )}
-          </Stack>
-        )}
+        <Stack gap="md">
+          <NumberInput
+            label="Start Time"
+            value={selectedMedia.startTime}
+            onChange={(value) => handleUpdateMedia(selectedMediaId, { 
+              startTime: Math.max(0, Math.min(value, selectedMedia.endTime - 0.1))
+            })}
+            min={0}
+            max={selectedMedia.endTime - 0.1}
+            step={0.1}
+            decimalScale={1}
+          />
+          <NumberInput
+            label="End Time"
+            value={selectedMedia.endTime}
+            onChange={(value) => handleUpdateMedia(selectedMediaId, { 
+              endTime: Math.min(selectedMedia.duration, Math.max(value, selectedMedia.startTime + 0.1))
+            })}
+            min={selectedMedia.startTime + 0.1}
+            max={selectedMedia.duration}
+            step={0.1}
+            decimalScale={1}
+          />
+          <Text size="sm">Current: {currentTime.toFixed(1)} / {selectedMedia.duration.toFixed(1)}</Text>
+          
+        </Stack>
+      )}
       </Stack>
     </ScrollArea>
   );

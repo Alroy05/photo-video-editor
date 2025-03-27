@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from 'react';
 import { AppShell, Button, Group, Stack, Title } from '@mantine/core';
+import { LayoutTemplate, Play, CircleStopIcon } from 'lucide-react';
 import LeftPanel from './components/LeftPanel';
 import Canvas from './components/Canvas';
 import Timeline from './components/Timeline';
@@ -145,11 +146,37 @@ export default function EditorPage() {
     >
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
-          <Title order={4}>Editor</Title>
+        <Group gap={8} align="center" style={{ lineHeight: 1 }}>
+          <LayoutTemplate 
+            size={26} 
+            style={{ 
+              color: '#228be6',
+              marginRight: 4 
+            }} 
+          />
+          <Title 
+            order={3} 
+            style={{
+              background: 'linear-gradient(to right, #228be6, #7950f2)',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent',
+              fontWeight: 700,
+              letterSpacing: 0.5,
+              margin: 0
+            }}
+          >
+            CanvasFlow
+          </Title>
+        </Group>
           <Group>
             <Button variant="default">Save your project for later — sign up or log in</Button>
-            <Button>Upgrade</Button>
-            <Button color="blue">Done</Button>
+            <Button style={{
+              background: 'linear-gradient(to right, #228be6, #7950f2)',
+            }}>Upgrade</Button>
+            <Button color="blue" style={{
+              background: 'linear-gradient(to right, #228be6, #7950f2)',
+            }}>Done</Button>
           </Group>
         </Group>
       </AppShell.Header>
@@ -179,16 +206,41 @@ export default function EditorPage() {
             videoRefs={videoRefs}
           />
           {selectedMedia && (
-            <Timeline
-              startTime={selectedMedia.startTime}
-              endTime={selectedMedia.endTime}
-              currentTime={currentTime}
-              duration={selectedMedia.duration}
-              onChange={(values) => handleUpdateMedia(selectedMediaId, {
-                startTime: values[0],
-                endTime: values[1]
-              })}
-            />
+            <>
+              <Group justify="center">
+                {isPlaying ? (
+                  <Button 
+                    onClick={handleStop}
+                    leftSection={<CircleStopIcon size={16} />} // Make sure to import Stop icon
+                    variant="filled"
+                    color="red"
+                  >
+                    Stop
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={handlePlay}
+                    leftSection={<Play size={16} />} // Make sure to import Play icon
+                    variant="filled"
+                    style={{
+                      background: 'linear-gradient(to right, #228be6, #7950f2)',
+                    }}
+                  >
+                    Play
+                  </Button>
+                )}
+              </Group>
+              <Timeline
+                startTime={selectedMedia.startTime}
+                endTime={selectedMedia.endTime}
+                currentTime={currentTime}
+                duration={selectedMedia.duration}
+                onChange={(values) => handleUpdateMedia(selectedMediaId, {
+                  startTime: values[0],
+                  endTime: values[1]
+                })}
+              />
+            </>
           )}
         </Stack>
       </AppShell.Main>
