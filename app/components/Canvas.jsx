@@ -2,92 +2,115 @@ import { useEffect, useRef, useState } from 'react';
 import { Box } from '@mantine/core';
 
 export default function Canvas({
-  mediaUrl,
-  mediaType,
-  width,
-  height,
-  setWidth,
-  setHeight,
+  mediaItems,
+  selectedMediaId,
+  setSelectedMediaId,
+  handleUpdateMedia,
   isPlaying,
   currentTime,
-  startTime,
-  endTime,
-  videoRef,
-  detachAudio,
+  videoRefs,
 }) {
   const [isDragging, setIsDragging] = useState(false);
-  const [position, setPosition] = useState({ x: 100, y: 100 });
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [resizeDirection, setResizeDirection] = useState(null);
-  const [startSize, setStartSize] = useState({ width: 0, height: 0 });
+  const [resizeStart, setResizeStart] = useState({ 
+    width: 0, 
+    height: 0, 
+    x: 0, 
+    y: 0,
+    right: 0 // Track right edge position
+  });
 
-  const shouldShowMedia = isPlaying
-    ? currentTime >= startTime && currentTime <= endTime
-    : true;
-
-  const handleMouseDown = (e) => {
+  const handleMouseDown = (e, mediaId) => {
     const target = e.target;
     if (target.classList.contains('resize-handle')) {
       const direction = target.getAttribute('data-direction');
+      const media = mediaItems.find(item => item.id === mediaId);
       setResizeDirection(direction);
-      setStartSize({ width, height });
-      setDragStart({ x: e.clientX, y: e.clientY });
+      setResizeStart({
+        width: media.width,
+        height: media.height,
+        x: media.x,
+        y: media.y,
+        right: media.x + media.width, // Calculate right edge
+        mouseX: e.clientX,
+        mouseY: e.clientY
+      });
     } else {
+      setSelectedMediaId(mediaId);
+      const media = mediaItems.find(item => item.id === mediaId);
       setIsDragging(true);
       setDragStart({
-        x: e.clientX - position.x,
-        y: e.clientY - position.y,
+        x: e.clientX - media.x,
+        y: e.clientY - media.y,
       });
     }
     e.preventDefault();
   };
 
   const handleMouseMove = (e) => {
-    if (isDragging) {
-      setPosition({
+    if (isDragging && selectedMediaId) {
+      handleUpdateMedia(selectedMediaId, {
         x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y,
+        y: e.clientY - dragStart.y
       });
-    } else if (resizeDirection) {
-      const deltaX = e.clientX - dragStart.x;
-      const deltaY = e.clientY - dragStart.y;
+    } else if (resizeDirection && selectedMediaId) {
+      const deltaX = e.clientX - resizeStart.mouseX;
+      const deltaY = e.clientY - resizeStart.mouseY;
 
-      let newWidth = width;
-      let newHeight = height;
+      let newWidth = resizeStart.width;
+      let newHeight = resizeStart.height;
+      let newX = resizeStart.x;
+      let newY = resizeStart.y;
 
       switch (resizeDirection) {
-        case 'n':
-          newHeight = Math.max(50, startSize.height - deltaY);
-          break;
-        case 's':
-          newHeight = Math.max(50, startSize.height + deltaY);
-          break;
+        // Right side handles
         case 'e':
-          newWidth = Math.max(50, startSize.width + deltaX);
-          break;
-        case 'w':
-          newWidth = Math.max(50, startSize.width - deltaX);
+          newWidth = Math.max(50, resizeStart.width + deltaX);
           break;
         case 'ne':
-          newWidth = Math.max(50, startSize.width + deltaX);
-          newHeight = Math.max(50, startSize.height - deltaY);
-          break;
-        case 'nw':
-          newWidth = Math.max(50, startSize.width - deltaX);
-          newHeight = Math.max(50, startSize.height - deltaY);
+          newWidth = Math.max(50, resizeStart.width + deltaX);
+          newHeight = Math.max(50, resizeStart.height - deltaY);
+          newY = resizeStart.y + (resizeStart.height - newHeight);
           break;
         case 'se':
-          newWidth = Math.max(50, startSize.width + deltaX);
-          newHeight = Math.max(50, startSize.height + deltaY);
+          newWidth = Math.max(50, resizeStart.width + deltaX);
+          newHeight = Math.max(50, resizeStart.height + deltaY);
+          break;
+        
+        // Left side handles
+        case 'w':
+          newWidth = Math.max(50, resizeStart.width - deltaX);
+          newX = resizeStart.x + deltaX;
+          break;
+        case 'nw':
+          newWidth = Math.max(50, resizeStart.width - deltaX);
+          newHeight = Math.max(50, resizeStart.height - deltaY);
+          newX = resizeStart.x + deltaX;
+          newY = resizeStart.y + (resizeStart.height - newHeight);
           break;
         case 'sw':
-          newWidth = Math.max(50, startSize.width - deltaX);
-          newHeight = Math.max(50, startSize.height + deltaY);
+          newWidth = Math.max(50, resizeStart.width - deltaX);
+          newHeight = Math.max(50, resizeStart.height + deltaY);
+          newX = resizeStart.x + deltaX;
+          break;
+        
+        // Top/bottom center handles
+        case 'n':
+          newHeight = Math.max(50, resizeStart.height - deltaY);
+          newY = resizeStart.y + (resizeStart.height - newHeight);
+          break;
+        case 's':
+          newHeight = Math.max(50, resizeStart.height + deltaY);
           break;
       }
 
-      setWidth(newWidth);
-      setHeight(newHeight);
+      handleUpdateMedia(selectedMediaId, {
+        width: newWidth,
+        height: newHeight,
+        x: newX,
+        y: newY
+      });
     }
   };
 
@@ -104,43 +127,9 @@ export default function Canvas({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, resizeDirection]);
+  }, [isDragging, resizeDirection, selectedMediaId]);
 
-  if (!mediaUrl) {
-    return (
-      <Box
-        style={{
-          width: '100%',
-          height: '400px',
-          border: '1px dashed #ccc',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <p>Upload an image or video to begin editing</p>
-      </Box>
-    );
-  }
-
-  const resizeHandles = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'].map((direction) => (
-    <Box
-      key={direction}
-      className="resize-handle"
-      data-direction={direction}
-      onMouseDown={handleMouseDown}
-      style={{
-        position: 'absolute',
-        width: '10px',
-        height: '10px',
-        backgroundColor: '#228be6',
-        cursor: `${direction}-resize`,
-        ...getResizeHandlePosition(direction),
-      }}
-    />
-  ));
-
-  function getResizeHandlePosition(direction) {
+  const getResizeHandlePosition = (direction, width, height) => {
     const positions = {
       n: { top: 0, left: '50%', transform: 'translateX(-50%)' },
       ne: { top: 0, right: 0 },
@@ -152,7 +141,7 @@ export default function Canvas({
       nw: { top: 0, left: 0 },
     };
     return positions[direction];
-  }
+  };
 
   return (
     <Box
@@ -164,42 +153,83 @@ export default function Canvas({
         overflow: 'hidden',
       }}
     >
-      {shouldShowMedia && (
+      {mediaItems.length === 0 && (
         <Box
-          onMouseDown={handleMouseDown}
           style={{
-            position: 'absolute',
-            left: position.x,
-            top: position.y,
-            width: width,
-            height: height,
-            border: '2px solid #228be6',
-            cursor: isDragging ? 'grabbing' : 'grab',
+            width: '100%',
+            height: '100%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#f8f9fa',
-            overflow: 'hidden',
           }}
         >
-          {mediaType === 'video' ? (
-            <video
-              ref={videoRef}
-              src={mediaUrl}
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-              autoPlay={isPlaying}
-              muted={detachAudio}
-            />
-          ) : (
-            <img
-              src={mediaUrl}
-              alt="Uploaded content"
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-            />
-          )}
-          {resizeHandles}
+          <p>Upload media to begin editing</p>
         </Box>
       )}
+
+      {mediaItems.map((media) => {
+        const shouldShow = isPlaying
+          ? currentTime >= media.startTime && currentTime <= media.endTime
+          : true;
+
+        if (!shouldShow) return null;
+
+        const isSelected = media.id === selectedMediaId;
+        const resizeHandles = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'].map((direction) => (
+          <Box
+            key={direction}
+            className="resize-handle"
+            data-direction={direction}
+            onMouseDown={(e) => handleMouseDown(e, media.id)}
+            style={{
+              position: 'absolute',
+              width: '10px',
+              height: '10px',
+              backgroundColor: isSelected ? '#228be6' : '#ccc',
+              cursor: `${direction}-resize`,
+              ...getResizeHandlePosition(direction, media.width, media.height),
+            }}
+          />
+        ));
+
+        return (
+          <Box
+            key={media.id}
+            onMouseDown={(e) => handleMouseDown(e, media.id)}
+            style={{
+              position: 'absolute',
+              left: media.x,
+              top: media.y,
+              width: media.width,
+              height: media.height,
+              border: `2px solid ${isSelected ? '#228be6' : '#ccc'}`,
+              cursor: isDragging && isSelected ? 'grabbing' : 'grab',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#f8f9fa',
+              overflow: 'hidden',
+              zIndex: isSelected ? 2 : 1,
+            }}
+          >
+            {media.type === 'video' ? (
+              <video
+                ref={el => videoRefs.current[media.id] = el}
+                src={media.url}
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                muted
+              />
+            ) : (
+              <img
+                src={media.url}
+                alt="Uploaded content"
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              />
+            )}
+            {isSelected && resizeHandles}
+          </Box>
+        );
+      })}
     </Box>
   );
 }
