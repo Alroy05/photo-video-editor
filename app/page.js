@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from 'react';
 import { AppShell, Button, Group, Stack, Title } from '@mantine/core';
-import { LayoutTemplate, Play, CircleStopIcon } from 'lucide-react';
+import { LayoutTemplate, Play, Pause, CircleStopIcon, Check, Zap } from 'lucide-react';
 import LeftPanel from './components/LeftPanel';
 import Canvas from './components/Canvas';
 import Timeline from './components/Timeline';
@@ -10,6 +10,7 @@ export default function EditorPage() {
   const [mediaItems, setMediaItems] = useState([]);
   const [selectedMediaId, setSelectedMediaId] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const timerRef = useRef(null);
   const videoRefs = useRef({});
@@ -81,23 +82,41 @@ export default function EditorPage() {
   };
 
   const handlePlay = () => {
-    setIsPlaying(true);
-    setCurrentTime(selectedMedia?.startTime || 0);
-    
-    // Play all videos that should be visible at startTime
-    mediaItems.forEach(item => {
-      if (item.type === 'video' && videoRefs.current[item.id]) {
-        videoRefs.current[item.id].currentTime = item.startTime;
-        if (currentTime >= item.startTime && currentTime <= item.endTime) {
-          videoRefs.current[item.id].play();
-        } else {
-          videoRefs.current[item.id].pause();
+    if (isPaused) {
+      // Resume playback
+      setIsPaused(false);
+      setIsPlaying(true);
+      
+      // Resume all videos that should be visible
+      mediaItems.forEach(item => {
+        if (item.type === 'video' && videoRefs.current[item.id]) {
+          if (currentTime >= item.startTime && currentTime <= item.endTime) {
+            videoRefs.current[item.id].play();
+          }
         }
-      }
-    });
+      });
+    } else {
+      // Start fresh playback
+      setIsPlaying(true);
+      setIsPaused(false);
+      setCurrentTime(selectedMedia?.startTime || 0);
+      
+      // Play all videos that should be visible at startTime
+      mediaItems.forEach(item => {
+        if (item.type === 'video' && videoRefs.current[item.id]) {
+          videoRefs.current[item.id].currentTime = item.startTime;
+          if (currentTime >= item.startTime && currentTime <= item.endTime) {
+            videoRefs.current[item.id].play();
+          } else {
+            videoRefs.current[item.id].pause();
+          }
+        }
+      });
+    }
   };
-
-  const handleStop = () => {
+  
+  const handlePause = () => {
+    setIsPaused(true);
     setIsPlaying(false);
     // Pause all videos
     Object.values(videoRefs.current).forEach(videoRef => {
@@ -105,9 +124,23 @@ export default function EditorPage() {
     });
     clearInterval(timerRef.current);
   };
+  
+  const handleStop = () => {
+    setIsPlaying(false);
+    setIsPaused(false);
+    // Pause all videos and reset to start
+    Object.values(videoRefs.current).forEach(videoRef => {
+      if (videoRef) {
+        videoRef.pause();
+        videoRef.currentTime = 0;
+      }
+    });
+    clearInterval(timerRef.current);
+    setCurrentTime(0);
+  };
 
   useEffect(() => {
-    if (isPlaying) {
+    if (isPlaying && !isPaused) {
       timerRef.current = setInterval(() => {
         setCurrentTime(prev => {
           const newTime = prev + 0.1;
@@ -123,7 +156,7 @@ export default function EditorPage() {
               }
             }
           });
-
+  
           if (selectedMedia && newTime >= selectedMedia.endTime) {
             handleStop();
             return selectedMedia.endTime;
@@ -134,9 +167,9 @@ export default function EditorPage() {
     } else {
       clearInterval(timerRef.current);
     }
-
+  
     return () => clearInterval(timerRef.current);
-  }, [isPlaying, mediaItems, selectedMedia]);
+  }, [isPlaying, isPaused, mediaItems, selectedMedia]);
 
   return (
     <AppShell
@@ -173,10 +206,12 @@ export default function EditorPage() {
             <Button variant="default">Save your project for later — sign up or log in</Button>
             <Button style={{
               background: 'linear-gradient(to right, #228be6, #7950f2)',
-            }}>Upgrade</Button>
+            }}><Zap  size={16} strokeWidth={2} /><span style={{marginLeft:"4px"}}>Upgrade</span></Button>
             <Button color="blue" style={{
               background: 'linear-gradient(to right, #228be6, #7950f2)',
-            }}>Done</Button>
+            }}><Check
+            size={16} strokeWidth={2}
+             /><span style={{ marginLeft: "4px"}}>Done</span></Button>
           </Group>
         </Group>
       </AppShell.Header>
@@ -204,32 +239,43 @@ export default function EditorPage() {
             isPlaying={isPlaying}
             currentTime={currentTime}
             videoRefs={videoRefs}
+            handleFileChange={handleFileChange}
           />
           {selectedMedia && (
             <>
-              <Group justify="center">
-                {isPlaying ? (
+            <Group justify="center">
+              {isPlaying ? (
+                <>
+                  <Button 
+                    onClick={handlePause}
+                    leftSection={<Pause size={16} />}
+                    variant="filled"
+                    color="yellow"
+                  >
+                    Pause
+                  </Button>
                   <Button 
                     onClick={handleStop}
-                    leftSection={<CircleStopIcon size={16} />} // Make sure to import Stop icon
+                    leftSection={<CircleStopIcon size={16} />}
                     variant="filled"
                     color="red"
                   >
                     Stop
                   </Button>
-                ) : (
-                  <Button 
-                    onClick={handlePlay}
-                    leftSection={<Play size={16} />} // Make sure to import Play icon
-                    variant="filled"
-                    style={{
-                      background: 'linear-gradient(to right, #228be6, #7950f2)',
-                    }}
-                  >
-                    Play
-                  </Button>
-                )}
-              </Group>
+                </>
+              ) : (
+                <Button 
+                  onClick={handlePlay}
+                  leftSection={isPaused ? <Play size={16} /> : <Play size={16} />}
+                  variant="filled"
+                  style={{
+                    background: 'linear-gradient(to right, #228be6, #7950f2)',
+                  }}
+                >
+                  {isPaused ? 'Resume' : 'Play'}
+                </Button>
+              )}
+            </Group>
               <Timeline
                 startTime={selectedMedia.startTime}
                 endTime={selectedMedia.endTime}

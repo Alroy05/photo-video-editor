@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Box } from '@mantine/core';
+import { Box,Text } from '@mantine/core';
+import { Dropzone, MIME_TYPES } from '@mantine/dropzone';
 
 export default function Canvas({
   mediaItems,
@@ -9,6 +10,7 @@ export default function Canvas({
   isPlaying,
   currentTime,
   videoRefs,
+  handleFileChange
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -143,6 +145,8 @@ export default function Canvas({
     return positions[direction];
   };
 
+  const openRef = useRef(null);
+
   return (
     <Box
       style={{
@@ -154,18 +158,36 @@ export default function Canvas({
       }}
     >
       {mediaItems.length === 0 && (
-        <Box
+        <Dropzone
+          onDrop={(files) => {
+            const event = { target: { files } };
+            handleFileChange(event);
+          }}
+          onReject={(files) => console.log('rejected files', files)}
+          maxSize={5 * 1024 ** 2}
+          accept={[MIME_TYPES.png, MIME_TYPES.jpeg, MIME_TYPES.mp4, MIME_TYPES.webm]}
+          openRef={openRef}
           style={{
             width: '100%',
             height: '100%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            border: 'none',
+            backgroundColor: '#f8f9fa',
           }}
         >
-          <p>Upload media to begin editing</p>
-        </Box>
+          <div style={{ textAlign: 'center', pointerEvents: 'none' }}>
+            <Text size="xl" inline>
+              Drag images or videos here or click to select files
+            </Text>
+            <Text size="sm" c="dimmed" inline mt={7}>
+              Upload up to 5 files (png, jpeg, mp4, webm)
+            </Text>
+          </div>
+        </Dropzone>
       )}
+
 
       {mediaItems.map((media) => {
         const shouldShow = isPlaying
